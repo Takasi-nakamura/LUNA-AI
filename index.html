@@ -9,6 +9,12 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <style>
+    /* ファイルポップアップ: 起点ボタンの直上に固定 */
+    #fileOverlay{display:none;position:fixed;inset:0;z-index:20;background:transparent}
+    #fileOverlay.show{display:block}
+    #fileMenu{position:fixed;z-index:30;bottom:auto;left:auto}
+  </style>
 </head>
 <body>
 <div class="app" id="app">
@@ -61,5 +67,40 @@
 <div class="modal-backdrop showcase-backdrop" id="showcaseBackdrop"><section class="showcase modal"><header><div><small>UI SHOWCASE</small><h2>LUNA UI 全表示</h2></div><button class="icon" id="showcaseClose">×</button></header><div class="showcase-body" id="showcaseBody"></div></section></div>
 <div class="toast" id="toast"></div>
 <script src="app.js"></script>
+<script>
+  // ファイルメニューを起点ボタンの真上へ配置し、画面のどこを押しても閉じる。
+  (()=>{
+    const attach=document.getElementById('attach');
+    const menu=document.getElementById('fileMenu');
+    const overlay=document.getElementById('fileOverlay');
+    if(!attach||!menu||!overlay)return;
+    const position=()=>{
+      if(!menu.classList.contains('show'))return;
+      const r=attach.getBoundingClientRect();
+      const gap=8;
+      const h=menu.getBoundingClientRect().height;
+      const w=menu.getBoundingClientRect().width;
+      let left=r.left;
+      let top=r.top-h-gap;
+      left=Math.max(8,Math.min(left,innerWidth-w-8));
+      if(top<8)top=r.bottom+gap;
+      menu.style.left=left+'px';
+      menu.style.top=top+'px';
+    };
+    attach.addEventListener('click',()=>requestAnimationFrame(position),true);
+    window.addEventListener('resize',position);
+    window.addEventListener('scroll',position,true);
+    document.addEventListener('click',e=>{
+      if(!e.target.closest('#fileMenu')&&!e.target.closest('#attach')){
+        menu.classList.remove('show');
+        overlay.classList.remove('show');
+      }
+    },true);
+    overlay.addEventListener('click',()=>{
+      menu.classList.remove('show');
+      overlay.classList.remove('show');
+    });
+  })();
+</script>
 </body>
 </html>
