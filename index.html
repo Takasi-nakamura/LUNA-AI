@@ -1,99 +1,65 @@
 <!doctype html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#ffffff" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
   <title>LUNA AI</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="app-shell" id="appShell">
-    <aside class="sidebar" id="sidebar" aria-label="会話バー">
-      <div class="sidebar-head">
-        <button class="brand" id="brandButton" aria-label="LUNAホーム"><span class="brand-mark">L</span><span>LUNA</span></button>
-        <button class="icon-button mobile-only" id="closeSidebar" aria-label="閉じる">×</button>
-      </div>
-      <button class="new-chat" id="newChat"><span>＋</span><span>新規チャット</span><kbd>⌘ K</kbd></button>
-      <div class="chat-list-wrap">
-        <div class="section-label">チャット</div>
-        <div class="chat-list" id="chatList"></div>
-      </div>
-      <div class="sidebar-footer">
-        <button class="account-card" id="openSettings">
-          <span class="avatar">T</span><span class="account-meta"><strong>Takasi</strong><small>設定を開く</small></span><span class="chevron">›</span>
-        </button>
-      </div>
-    </aside>
+<div class="app" id="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="side-top"><button class="brand" id="homeBtn"><span class="logo">L</span><b>LUNA</b></button><button class="icon mobile" id="closeSide">×</button></div>
+    <button class="new-chat" id="newChat"><span>＋</span>新規チャット<span class="shortcut">⌘ K</span></button>
+    <div class="side-section"><span>チャット</span><button class="icon tiny" id="searchChats">⌕</button></div>
+    <div class="chat-list" id="chatList"></div>
+    <div class="side-bottom"><button class="account" id="settingsOpen"><span class="avatar">T</span><span><b>Takasi</b><small>設定</small></span><i>›</i></button></div>
+  </aside>
 
-    <main class="main" id="main">
-      <header class="topbar">
-        <button class="icon-button" id="menuButton" aria-label="会話バー">☰</button>
-        <div class="topbar-title" id="topbarTitle">新しいチャット</div>
-        <button class="icon-button" id="topMore" aria-label="その他">•••</button>
-      </header>
+  <main class="main">
+    <header class="topbar"><button class="icon" id="openSide">☰</button><div class="title" id="chatTitle">新しいチャット</div><div class="top-actions"><button class="icon" id="demoToggle" title="UIショーケース">◇</button><button class="icon" id="moreBtn">•••</button></div></header>
 
-      <section class="conversation" id="conversation">
-        <div class="welcome" id="welcome">
-          <div class="luna-orb">L</div>
-          <h1>何をしましょうか？</h1>
-          <p>LUNAに質問したり、考えを整理したり、ファイルを渡したりできます。</p>
-        </div>
-        <div class="messages" id="messages" hidden></div>
-      </section>
-
-      <section class="composer-zone">
-        <div class="attachment-strip" id="attachmentStrip"></div>
-        <div class="composer" id="composer">
-          <textarea id="prompt" rows="1" placeholder="LUNAにメッセージを入力…"></textarea>
-          <div class="composer-tools">
-            <div class="left-tools">
-              <button class="round-tool" id="attachButton" aria-label="ファイルを添付">＋</button>
-              <input id="fileInput" type="file" hidden multiple accept=".pdf,.txt,.md,.csv,.json,.html,.css,.js,.svg,image/*" />
-              <button class="tool-button model-button" id="modelButton"><span class="status-dot"></span><span id="modelLabel">Nemotron 3.5 Lightning</span><span>⌄</span></button>
-              <button class="tool-button search-toggle" id="searchToggle"><span>⌕</span><span>Web検索</span></button>
-            </div>
-            <button class="send-button" id="sendButton" aria-label="送信">↑</button>
-          </div>
-          <div class="model-menu dropdown" id="modelMenu"></div>
-        </div>
-        <div class="composer-note">LUNAはAIです。重要な情報は確認してください。</div>
-      </section>
-    </main>
-  </div>
-
-  <div class="popover-overlay" id="popoverOverlay"></div>
-  <div class="file-menu popover" id="fileMenu">
-    <button data-action="upload"><span>↑</span><div><strong>ファイルをアップロード</strong><small>PDF、画像、テキストなど</small></div></button>
-    <button data-action="camera"><span>⌁</span><div><strong>写真を追加</strong><small>カメラや画像から</small></div></button>
-  </div>
-
-  <div class="settings-backdrop" id="settingsBackdrop">
-    <section class="settings-panel" role="dialog" aria-modal="true" aria-label="設定">
-      <header class="settings-head"><div><small>設定</small><h2>LUNA</h2></div><button class="icon-button" id="closeSettings">×</button></header>
-      <div class="settings-layout">
-        <nav class="settings-nav">
-          <button class="settings-tab active" data-tab="account">アカウント</button>
-          <button class="settings-tab" data-tab="api">API</button>
-          <button class="settings-tab" data-tab="personal">パーソナルインテリジェンス</button>
-          <button class="settings-tab" data-tab="appearance">デザイン</button>
-        </nav>
-        <div class="settings-content">
-          <div class="settings-page active" data-page="account"><div class="page-heading"><h3>アカウント</h3><p>LUNAのアカウントを管理します。</p></div><div class="setting-card profile-card"><div class="large-avatar">T</div><div class="field-grow"><label>アカウント名</label><input value="Takasi" /><small>チャット画面のアカウントボックスに表示されます。</small></div><button class="secondary">保存</button></div><div class="setting-card"><div><strong>Firebaseアカウント</strong><p>ログイン、ログアウト、アカウント作成、削除を管理します。</p></div><button class="secondary">ログアウト</button></div><div class="danger-card"><div><strong>アカウントを削除</strong><p>アカウントと保存されたデータを削除します。</p></div><button class="danger">削除</button></div></div>
-          <div class="settings-page" data-page="api"><div class="page-heading"><h3>API</h3><p>AIモデルへの接続を設定します。</p></div><div class="setting-card vertical"><label>OpenRouter API Key</label><div class="secret-input"><input type="password" placeholder="sk-or-v1-••••••••" /><button>表示</button></div><small>キーはブラウザ内に保存する設計です。公開リポジトリへ直接書き込まないでください。</small></div><div class="setting-card vertical"><label>使用モデル</label><select id="settingsModel"><option>Nemotron 3.5 Lightning</option><option>Nemotron 3 Ultra 550B</option><option>Nemotron 3 Nano Omni 30B Reasoning</option><option>Gemma 4 26B A4B IT</option><option>Nemotron 3 Super 120B</option></select></div></div>
-          <div class="settings-page" data-page="personal"><div class="page-heading"><h3>パーソナルインテリジェンス</h3><p>LUNAがあなたに合わせて応答するための設定です。</p></div><div class="setting-card vertical"><label>なんとAIに呼ばれますか？</label><input value="LUNA" /><small>会話中にAI自身を指す名前です。</small></div><div class="setting-card vertical"><label>カスタム指示</label><textarea class="large-textarea" placeholder="LUNAに知っておいてほしいこと、回答の好みなど…"></textarea><small>この指示は会話時のAIへの追加コンテキストとして利用します。</small></div></div>
-          <div class="settings-page" data-page="appearance"><div class="page-heading"><h3>デザイン</h3><p>LUNAの見た目を自分好みに調整します。</p></div><div class="setting-card vertical"><label>アクセントカラー</label><div class="swatches"><button class="swatch selected"></button><button class="swatch slate"></button><button class="swatch blue"></button><button class="swatch violet"></button><button class="swatch green"></button></div></div><div class="setting-card vertical"><label>テーマ</label><div class="segmented"><button class="selected">ライト</button><button>ダーク</button><button>システム</button></div></div><div class="setting-card vertical"><label>フォント</label><select><option>Inter / Noto Sans JP</option><option>システム標準</option></select></div></div>
-        </div>
-      </div>
+    <section class="conversation" id="conversation">
+      <div class="welcome" id="welcome"><div class="logo hero">L</div><h1>何をしましょうか？</h1><p>質問、整理、ファイル、コードまで。LUNAと一緒に進めましょう。</p><div class="suggestions"><button>アイデアを整理する</button><button>コードをレビューする</button><button>文章を作る</button></div></div>
+      <div class="messages" id="messages" hidden></div>
     </section>
-  </div>
 
-  <div class="confirm-backdrop" id="confirmBackdrop"><div class="confirm-dialog"><div class="confirm-icon">!</div><h3 id="confirmTitle">チャットを削除しますか？</h3><p id="confirmText">この操作は元に戻せません。</p><div class="confirm-actions"><button class="secondary" id="confirmCancel">キャンセル</button><button class="danger" id="confirmDelete">削除する</button></div></div></div>
-  <div class="context-menu" id="contextMenu"><button id="renameChat">名前を変更</button><button class="danger-text" id="deleteChat">削除</button></div>
+    <section class="composer-zone">
+      <div class="drop-hint" id="dropHint">ここにファイルをドロップ</div>
+      <div class="attachments" id="attachments"></div>
+      <div class="composer" id="composer">
+        <textarea id="prompt" rows="1" placeholder="LUNAにメッセージを入力…"></textarea>
+        <div class="composer-row">
+          <div class="composer-left"><button class="round" id="attach">＋</button><button class="pill" id="modelBtn"><span class="dot"></span><span id="modelLabel">Nemotron 3.5 Lightning</span><span>⌄</span></button><button class="pill search" id="webBtn">⌕ Web検索</button></div>
+          <button class="send" id="send">↑</button>
+        </div>
+        <div class="menu model-menu" id="modelMenu"></div>
+      </div>
+      <div class="composer-note">LUNAはAIです。重要な情報は確認してください。</div>
+    </section>
+  </main>
+</div>
 
-  <script src="app.js"></script>
+<div class="overlay" id="fileOverlay"></div>
+<div class="popover file-menu" id="fileMenu"><button id="pickFiles"><span>↑</span><div><b>ファイルをアップロード</b><small>PDF、画像、テキスト、コード</small></div></button><button id="cameraFiles"><span>◉</span><div><b>写真を追加</b><small>画像を選択してプレビュー</small></div></button><button id="demoFile"><span>▣</span><div><b>デモファイルを表示</b><small>UI確認用のサンプルを追加</small></div></button></div>
+<input id="fileInput" type="file" hidden multiple accept="image/*,.pdf,.txt,.md,.csv,.json,.html,.css,.js,.ts,.svg,.zip">
+
+<div class="modal-backdrop" id="settingsBackdrop"><section class="settings modal"><header><div><small>設定</small><h2>LUNA</h2></div><button class="icon" id="settingsClose">×</button></header><div class="settings-body"><nav class="tabs" id="settingsTabs"><button class="active" data-tab="account">アカウント</button><button data-tab="api">API</button><button data-tab="personal">パーソナルインテリジェンス</button><button data-tab="design">デザイン</button></nav><div class="settings-pages">
+<section class="settings-page active" data-page="account"><div class="heading"><h3>アカウント</h3><p>LUNAのアカウントとプロフィールを管理します。</p></div><div class="card profile"><span class="avatar big">T</span><div class="grow"><label>アカウント名</label><input value="Takasi"></div><button class="secondary">保存</button></div><div class="card"><div><b>Firebaseアカウント</b><p>ログイン、ログアウト、アカウント作成、削除を管理します。</p></div><button class="secondary">ログアウト</button></div><div class="card danger-card"><div><b>アカウントを削除</b><p>アカウントと保存データを削除します。</p></div><button class="danger">削除</button></div></section>
+<section class="settings-page" data-page="api"><div class="heading"><h3>API</h3><p>AI接続に使うサービスとモデルを設定します。</p></div><div class="card vertical"><label>OpenRouter API Key</label><div class="secret"><input type="password" placeholder="sk-or-v1-••••••••"><button>表示</button></div><small>APIキーは公開リポジトリへ直接保存しません。</small></div><div class="card vertical"><label>使用モデル</label><select id="settingsModel"></select></div></section>
+<section class="settings-page" data-page="personal"><div class="heading"><h3>パーソナルインテリジェンス</h3><p>LUNAがあなたに合わせて応答するための設定です。</p></div><div class="card vertical"><label>あなたを何と呼びますか？</label><input placeholder="例：Takasi"></div><div class="card vertical"><label>カスタム指示</label><textarea placeholder="回答の好み、知っておいてほしいこと…"></textarea></div></section>
+<section class="settings-page" data-page="design"><div class="heading"><h3>デザイン</h3><p>色、テーマ、文字を調整します。</p></div><div class="card vertical"><label>アクセントカラー</label><div class="swatches"><button class="swatch selected"></button><button class="swatch slate"></button><button class="swatch blue"></button><button class="swatch violet"></button><button class="swatch green"></button></div></div><div class="card vertical"><label>テーマ</label><div class="segmented"><button class="selected">ライト</button><button>ダーク</button><button>システム</button></div></div><div class="card vertical"><label>フォント</label><select><option>Inter / Noto Sans JP</option><option>システム標準</option></select></div></section>
+</div></div></section></div>
+
+<div class="modal-backdrop" id="confirmBackdrop"><div class="confirm modal-small"><div class="warn">!</div><h3 id="confirmTitle">削除しますか？</h3><p id="confirmText">この操作は元に戻せません。</p><div><button class="secondary" id="cancelDelete">キャンセル</button><button class="danger" id="doDelete">削除する</button></div></div></div>
+<div class="context" id="context"><button id="rename">名前を変更</button><button id="delete">削除</button></div>
+
+<div class="modal-backdrop showcase-backdrop" id="showcaseBackdrop"><section class="showcase modal"><header><div><small>UI SHOWCASE</small><h2>LUNA UI 全表示</h2></div><button class="icon" id="showcaseClose">×</button></header><div class="showcase-body" id="showcaseBody"></div></section></div>
+<div class="toast" id="toast"></div>
+<script src="app.js"></script>
 </body>
 </html>
