@@ -8,7 +8,7 @@ export const DEFAULT_CONFIG = {
   },
   autoFallback: true,
   defaultProvider: 'groq',
-  searchApiKey: '',
+  searchWorkerUrl: '',
   memoryInjection: true,
   turn: 0,
 };
