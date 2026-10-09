@@ -7,7 +7,7 @@ import { listSkills, createSkill, updateSkill, deleteSkill } from '../core/skill
 import { updateMemory, deleteMemory, updateShort, deleteShort, promote } from '../core/memory.js';
 import { toast } from './popups.js';
 
-export function renderSettings(root) {
+export function renderSettings(root, initialTab = 'models') {
   root.innerHTML = '';
   const tabs = el('div', 'tabs');
   const body = el('div', 'tab-body');
@@ -26,7 +26,7 @@ export function renderSettings(root) {
     tabs.append(b);
   }
   root.append(tabs, body);
-  show('models');
+  show(panels[initialTab] ? initialTab : 'models');
 }
 
 // ---------- モデル ----------
