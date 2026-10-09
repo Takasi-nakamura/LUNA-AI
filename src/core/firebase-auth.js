@@ -24,7 +24,7 @@ export async function firebaseAuth() {
 export async function signInGoogle() {
   const { auth } = await sdk();
   const a = await firebaseAuth();
-  return auth.signInWithPopup(a, new auth.GoogleAuthProvider());
+  return auth.signInWithRedirect(a, new auth.GoogleAuthProvider());
 }
 export async function signInEmail(email, password, create = false) {
   const { auth } = await sdk();
@@ -41,7 +41,8 @@ export async function signOutFirebase() {
 export async function currentIdToken() {
   if (!authInstance) return null;
   const { auth } = await sdk();
-  return auth.getAuth(appInstance).currentUser?.getIdToken() ?? null;
+  await authInstance.authStateReady?.();
+  return authInstance.currentUser ? await authInstance.currentUser.getIdToken() : null;
 }
 export async function currentUser() {
   if (!authInstance) return null;
