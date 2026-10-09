@@ -1,5 +1,5 @@
 // 最小限のキャッシュ：アプリ本体のみ。API通信・CDNは素通し（キャッシュしない）
-const CACHE = 'luna-v3';
+const CACHE = 'luna-v4';
 const SHELL = [
   './',
   './index.html',
