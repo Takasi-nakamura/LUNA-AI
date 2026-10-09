@@ -363,17 +363,77 @@ async function revertProvider(e) {
   chat.modelSelection = { ...chat.modelSelection, provider: e.from, model: PROVIDERS[e.from].models[0] };
   await put('chats', chat); toast(`${PROVIDERS[e.from].label} に戻しました`);
 }
-async function sendText(text) {
-  const t = text.trim();
-  if ((!t && !state.attachments.length) || state.busy) return;
-  if (state.attachments.length) {
-    toast('添付ファイルの表示には対応しています。ファイル内容のAI読み取りは次の段階で追加します。', 4200);
+async function extractFileText(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (file.size > 15 * 1024 * 1024) throw new Error(file.name + ' は15MBを超えています');
+  if (['txt','md','csv','json','js','css','xml','svg','html','htm'].includes(ext) || file.type.startsWith('text/')) {
+    const text = await file.text();
+    if (['html','htm','svg'].includes(ext)) return new DOMParser().parseFromString(text, 'text/html').body.textContent || text;
+    return text;
   }
-  if (!t) return;
+  if (ext === 'pdf' || file.type === 'application/pdf') {
+    const pdfjs = await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs');
+    const pdf = await pdfjs.getDocument({ data: await file.arrayBuffer(), disableWorker: true }).promise;
+    let out = '';
+    for (let i = 1; i <= Math.min(pdf.numPages, 80); i++) {
+      const page = await pdf.getPage(i); const data = await page.getTextContent();
+      out += '\n[Page ' + i + ']\n' + data.items.map(x => x.str || '').join(' ') + '\n';
+      if (out.length > 45000) break;
+    }
+    return out || '(PDFからテキストを抽出できませんでした。スキャン画像PDFの可能性があります)';
+  }
+  if (['docx'].includes(ext)) {
+    const mammoth = await import('https://cdn.jsdelivr.net/npm/mammoth@1.8.0/+esm');
+    const result = await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
+    return result.value;
+  }
+  if (['xlsx','xls'].includes(ext)) {
+    const XLSX = await import('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm');
+    const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+    return workbook.SheetNames.map(name => '[Sheet: ' + name + ']\n' + XLSX.utils.sheet_to_csv(workbook.Sheets[name])).join('\n\n');
+  }
+  if (['pptx'].includes(ext)) {
+    const JSZip = (await import('https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm')).default;
+    const zip = await JSZip.loadAsync(await file.arrayBuffer());
+    const slides = Object.keys(zip.files).filter(name => /^ppt\/slides\/slide\d+\.xml$/.test(name)).sort();
+    const parts = [];
+    for (const name of slides.slice(0, 80)) {
+      const xml = await zip.files[name].async('text');
+      const doc = new DOMParser().parseFromString(xml, 'application/xml');
+      parts.push(name + ': ' + Array.from(doc.getElementsByTagName('a:t')).map(n => n.textContent).join(' '));
+    }
+    return parts.join('\n');
+  }
+  if (file.type.startsWith('image/')) {
+    const Tesseract = await import('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.esm.min.js');
+    const result = await Tesseract.recognize(file, 'jpn+eng');
+    return '[画像OCR結果]\n' + result.data.text;
+  }
+  throw new Error(file.name + ' はまだ読み取りに対応していません');
+}
+async function sendText(text) {
+  if (state.busy) return;
+  const raw = (text || '').trim();
+  const files = state.attachments.splice(0);
+  renderAttachments();
+  if (!raw && !files.length) return;
   state.busy = true; state.ctrl = new AbortController(); els.sendBtn.disabled = true; els.stopBtn.hidden = false;
-  try { await runTurn({ chatId: state.chatId, input: t, ui, signal: state.ctrl.signal }); await refreshChats(state.chatId); }
-  catch (e) { if (e.name === 'AbortError') toast('停止しました'); else { console.error(e); toast(`エラー: ${e.message}`, 6000); } }
-  finally { state.busy = false; state.ctrl = null; els.sendBtn.disabled = false; els.stopBtn.hidden = true; }
+  try {
+    const chunks = [];
+    for (const file of files) {
+      try { chunks.push('### 添付ファイル: ' + file.name + '\n' + (await extractFileText(file)).slice(0, 45000)); }
+      catch (e) { chunks.push('### 添付ファイル: ' + file.name + '\n読み取りエラー: ' + e.message); }
+    }
+    const prompt = [raw, chunks.length ? '【添付ファイルの内容】\n' + chunks.join('\n\n').slice(0, 60000) : ''].filter(Boolean).join('\n\n');
+    const chat = await get('chats', state.chatId);
+    await runTurn({ chatId: state.chatId, input: prompt, ui, signal: state.ctrl.signal });
+    await refreshChats(state.chatId);
+  } catch (e) {
+    if (e.name === 'AbortError') toast('停止しました');
+    else { console.error(e); toast('エラー: ' + e.message, 6000); }
+  } finally {
+    state.busy = false; state.ctrl = null; els.sendBtn.disabled = false; els.stopBtn.hidden = true;
+  }
 }
 function autosize() { els.input.style.height = 'auto'; els.input.style.height = `${Math.min(els.input.scrollHeight, 160)}px`; }
 async function updateSuggest() {
@@ -451,14 +511,13 @@ async function showSkillPicker() {
 // ---------- Events ----------
 els.form.addEventListener('submit', e => {
   e.preventDefault(); const v = els.input.value; els.input.value = ''; autosize(); els.suggest.hidden = true; els.addMenu.hidden = true;
-  const attachedNames = state.attachments.map(f => f.name);
-  const prompt = attachedNames.length ? `${v}\n\n[添付ファイル: ${attachedNames.join(', ')}]` : v;
-  sendText(prompt);
+  sendText(v);
 });
 els.input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); els.form.requestSubmit(); } });
 els.input.addEventListener('input', () => { autosize(); updateSuggest(); });
 els.stopBtn.addEventListener('click', () => state.ctrl?.abort());
 els.select.addEventListener('change', () => refreshChats(els.select.value));
+els.branchSelect.addEventListener('change', async () => { const chat = await get('chats', state.chatId); if (!chat) return; chat.activeBranchId = els.branchSelect.value; await put('chats', chat); await renderHistory(); });
 els.newBtn.addEventListener('click', async () => { const c = await createChat(); await refreshChats(c.id); if (isMobile()) setSidebar(false); });
 els.delBtn.addEventListener('click', async () => { if (!state.chatId) return; openModal({ title: 'チャットを削除しますか？', message: 'この会話と短期記憶が削除されます。', confirmLabel: '削除する', danger: true, onConfirm: async () => { await deleteChatCascade(state.chatId); await refreshChats(); } }); });
 els.setBtn.addEventListener('click', () => openSettings('models'));
