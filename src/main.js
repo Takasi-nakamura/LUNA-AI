@@ -1,4 +1,4 @@
-import { openDB, getAll, getAllByIndex, get, put, deleteChatCascade } from './store/db.js';
+import { openDB, getAll, getAllByIndex, get, put, del, deleteChatCascade } from './store/db.js';
 import { getConfig } from './store/config.js';
 import { PROVIDERS } from './core/router.js';
 import { runTurn } from './core/orchestrator.js';
@@ -18,6 +18,7 @@ const els = {
   chatList: $('#chatList'),
   chatCount: $('#chatCount'),
   workspaceHeading: $('#workspaceHeading'),
+  branchSelect: $('#branchSelect'),
   select: $('#chatSelect'),
   newBtn: $('#newChat'),
   delBtn: $('#delChat'),
@@ -61,6 +62,8 @@ window.addEventListener('unhandledrejection', (event) => {
 });
 const ui = {
   appendMessage: (m) => appendMessage(m, { live: true }),
+  startThinking: () => startThinking(),
+  appendStreaming: (m) => appendStreaming(m),
   toast,
   onSwitch: (e) => showSwitch(e, () => revertProvider(e)),
 };
@@ -162,12 +165,38 @@ async function createChat() {
     id: crypto.randomUUID(), title: '新しいチャット', createdAt: Date.now(), updatedAt: Date.now(),
     modelSelection: { provider: cfg.defaultProvider, model: PROVIDERS[cfg.defaultProvider].models[0], autoFallback: cfg.autoFallback },
   };
+  const branch = { id: crypto.randomUUID(), chatId: chat.id, title: 'メイン', parentId: null, createdAt: Date.now() };
+  chat.activeBranchId = branch.id;
   await put('chats', chat);
+  await put('branches', branch);
   return chat;
+}
+async function ensureChatBranch(chat) {
+  let branches = (await getAllByIndex('branches', 'chatId', chat.id)).sort((a, b) => a.createdAt - b.createdAt);
+  if (!branches.length) {
+    const branch = { id: crypto.randomUUID(), chatId: chat.id, title: 'メイン', parentId: null, createdAt: Date.now() };
+    const msgs = (await getAllByIndex('messages', 'chatId', chat.id)).sort((a, b) => a.createdAt - b.createdAt);
+    for (const msg of msgs) { if (!msg.branchId) { msg.branchId = branch.id; await put('messages', msg); } }
+    await put('branches', branch);
+    branches = [branch];
+  }
+  if (!branches.some(b => b.id === chat.activeBranchId)) { chat.activeBranchId = branches[branches.length - 1].id; await put('chats', chat); }
+  return branches;
+}
+async function refreshBranchSelector(chat) {
+  const branches = await ensureChatBranch(chat);
+  els.branchSelect.innerHTML = '';
+  for (const b of branches) {
+    const option = document.createElement('option');
+    option.value = b.id; option.textContent = b.title || '分岐';
+    els.branchSelect.append(option);
+  }
+  els.branchSelect.value = chat.activeBranchId;
 }
 async function refreshChats(selectId) {
   const chats = (await getAll('chats')).sort((a, b) => b.updatedAt - a.updatedAt);
   if (!chats.length) { const c = await createChat(); return refreshChats(c.id); }
+  for (const chat of chats) await ensureChatBranch(chat);
   state.chatId = chats.some(c => c.id === selectId) ? selectId : chats[0].id;
   els.select.innerHTML = '';
   els.chatList.innerHTML = '';
@@ -186,7 +215,9 @@ async function refreshChats(selectId) {
     item.append(title, more); els.chatList.append(item);
   }
   els.select.value = state.chatId;
-  els.workspaceHeading.textContent = chats.find(c => c.id === state.chatId)?.title || '新しいチャット';
+  const activeChat = chats.find(c => c.id === state.chatId);
+  els.workspaceHeading.textContent = activeChat?.title || '新しいチャット';
+  if (activeChat) await refreshBranchSelector(activeChat);
   await renderHistory();
 }
 function toggleChatMenu(item, chat) {
@@ -204,14 +235,31 @@ function toggleChatMenu(item, chat) {
 }
 async function renderHistory() {
   els.messages.innerHTML = '';
-  const msgs = (await getAllByIndex('messages', 'chatId', state.chatId)).sort((a, b) => a.createdAt - b.createdAt);
+  const chat = await get('chats', state.chatId);
+  const msgs = (await getAllByIndex('messages', 'chatId', state.chatId)).filter(m => !chat?.activeBranchId || m.branchId === chat.activeBranchId).sort((a, b) => a.createdAt - b.createdAt);
   for (const m of msgs) appendMessage(m, { live: false });
   els.welcome.hidden = msgs.length > 0;
   scrollBottom();
 }
+function makeAction(label, action) {
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'msg-action'; b.textContent = label;
+  b.addEventListener('click', action); return b;
+}
+function addMessageActions(wrap, msg, live) {
+  const bar = document.createElement('div'); bar.className = 'msg-actions';
+  if (msg.role === 'user') {
+    bar.append(makeAction('コピー', () => navigator.clipboard?.writeText(msg.content).then(() => toast('コピーしました')).catch(() => toast('コピーできませんでした'))));
+    bar.append(makeAction('編集', () => editUserMessage(msg)));
+  } else {
+    bar.append(makeAction('再生成', () => regenerateAssistant(msg)));
+    bar.append(makeAction('回答をコピー', () => navigator.clipboard?.writeText(msg.content).then(() => toast('コピーしました')).catch(() => toast('コピーできませんでした'))));
+    bar.append(makeAction('⋯', () => showAnswerDetails(msg)));
+  }
+  wrap.append(bar);
+}
 function appendMessage(msg, { live = false } = {}) {
   els.welcome.hidden = true;
-  const wrap = document.createElement('div'); wrap.className = `msg ${msg.role}`;
+  const wrap = document.createElement('div'); wrap.className = 'msg ' + msg.role; wrap.dataset.messageId = msg.id;
   const bubble = document.createElement('div'); bubble.className = 'bubble';
   if (msg.role === 'user') bubble.textContent = msg.content;
   else {
@@ -219,7 +267,95 @@ function appendMessage(msg, { live = false } = {}) {
     bubble.append(renderBlocks(blocks, { onAsk: live ? b => showAsk(b, sendText) : undefined }));
     if (msg.sources?.length) bubble.append(renderSources(msg.sources));
   }
-  wrap.append(bubble); els.messages.append(wrap); scrollBottom(); return wrap;
+  wrap.append(bubble); addMessageActions(wrap, msg, live); els.messages.append(wrap); scrollBottom(); return wrap;
+}
+function startThinking() {
+  const wrap = document.createElement('div'); wrap.className = 'msg assistant thinking-message'; wrap.dataset.thinking = 'true';
+  const bubble = document.createElement('div'); bubble.className = 'bubble';
+  const dots = document.createElement('span'); dots.className = 'thinking-dots'; dots.setAttribute('aria-label', '考え中');
+  for (let i = 0; i < 3; i++) dots.append(document.createElement('span'));
+  bubble.append(dots); wrap.append(bubble); els.messages.append(wrap); scrollBottom(); return wrap;
+}
+async function appendStreaming(msg) {
+  let wrap = els.messages.querySelector('[data-thinking="true"]');
+  if (!wrap) { wrap = document.createElement('div'); wrap.className = 'msg assistant'; els.messages.append(wrap); }
+  wrap.removeAttribute('data-thinking');
+  let bubble = wrap.querySelector('.bubble');
+  if (!bubble) { bubble = document.createElement('div'); bubble.className = 'bubble'; wrap.append(bubble); }
+  bubble.replaceChildren();
+  const textNode = document.createElement('div'); textNode.className = 'stream-text'; bubble.append(textNode);
+  const text = msg.content || '';
+  const step = text.length > 6000 ? 24 : text.length > 2500 ? 12 : 5;
+  for (let i = 0; i < text.length; i += step) {
+    textNode.textContent = text.slice(0, i + step);
+    scrollBottom();
+    await new Promise(resolve => setTimeout(resolve, 12));
+  }
+  bubble.replaceChildren(renderBlocks(msg.blocks ?? lseFilter(text).blocks, { onAsk: b => showAsk(b, sendText) }));
+  if (msg.sources?.length) bubble.append(renderSources(msg.sources));
+  addMessageActions(wrap, msg, true);
+  scrollBottom();
+}
+async function getActiveMessages() {
+  const chat = await get('chats', state.chatId);
+  return (await getAllByIndex('messages', 'chatId', state.chatId)).filter(m => !chat?.activeBranchId || m.branchId === chat.activeBranchId).sort((a,b) => a.createdAt-b.createdAt);
+}
+async function forkBranch(chat, sourceMessages, title) {
+  const branch = { id: crypto.randomUUID(), chatId: chat.id, title: (title || '分岐') + ' · ' + new Date().toLocaleTimeString('ja-JP', {hour:'2-digit', minute:'2-digit'}), parentId: chat.activeBranchId || null, createdAt: Date.now() };
+  await put('branches', branch);
+  const idMap = new Map();
+  for (const source of sourceMessages) idMap.set(source.id, crypto.randomUUID());
+  for (const source of sourceMessages) {
+    const clone = { ...source, id: idMap.get(source.id), branchId: branch.id };
+    if (clone.parentId && idMap.has(clone.parentId)) clone.parentId = idMap.get(clone.parentId);
+    await put('messages', clone);
+  }
+  chat.activeBranchId = branch.id; chat.updatedAt = Date.now(); await put('chats', chat);
+  return { branch, cloned: sourceMessages.map(m => ({ ...m, id: idMap.get(m.id), branchId: branch.id })) };
+}
+async function editUserMessage(msg) {
+  if (state.busy) return;
+  const wrap = els.messages.querySelector('[data-message-id="' + msg.id + '"]'); if (!wrap) return;
+  const bubble = wrap.querySelector('.bubble'); bubble.replaceChildren();
+  const editor = document.createElement('div'); editor.className = 'msg-edit';
+  const area = document.createElement('textarea'); area.value = msg.content; area.setAttribute('aria-label', 'メッセージを編集');
+  const row = document.createElement('div'); row.className = 'row';
+  const cancel = document.createElement('button'); cancel.type = 'button'; cancel.className = 'msg-action'; cancel.textContent = 'キャンセル'; cancel.onclick = () => renderHistory();
+  const save = document.createElement('button'); save.type = 'button'; save.className = 'primary'; save.textContent = '編集して再送信';
+  save.onclick = async () => {
+    const text = area.value.trim(); if (!text) return;
+    const chat = await get('chats', state.chatId); const messages = await getActiveMessages(); const index = messages.findIndex(m => m.id === msg.id);
+    const prefix = messages.slice(0, index);
+    await forkBranch(chat, prefix, '編集');
+    els.messages.innerHTML = ''; await renderHistory();
+    await sendText(text);
+  };
+  row.append(cancel, save); editor.append(area, row); bubble.append(editor); area.focus();
+}
+async function regenerateAssistant(msg) {
+  if (state.busy) return;
+  const chat = await get('chats', state.chatId); const messages = await getActiveMessages(); const index = messages.findIndex(m => m.id === msg.id);
+  if (index < 0) return;
+  const userIndex = messages.slice(0, index).map(m => m.role).lastIndexOf('user');
+  if (userIndex < 0) return toast('再生成するユーザーメッセージが見つかりません');
+  const userMsg = messages[userIndex];
+  const prefix = messages.slice(0, userIndex + 1);
+  const { cloned } = await forkBranch(chat, prefix, '再生成');
+  await refreshBranchSelector(chat); await renderHistory();
+  const clonedUser = cloned[cloned.length - 1];
+  await runTurn({ chatId: state.chatId, input: clonedUser.content, existingUserMsgId: clonedUser.id, ui, signal: (state.ctrl = new AbortController()).signal });
+  await refreshChats(state.chatId);
+}
+async function showAnswerDetails(msg) {
+  const overlay = document.createElement('div'); overlay.className = 'overlay';
+  const modal = document.createElement('div'); modal.className = 'modal';
+  const title = document.createElement('h3'); title.textContent = '回答の詳細';
+  const provider = document.createElement('p'); provider.textContent = 'モデル: ' + (msg.provider || '不明');
+  const duration = document.createElement('p'); duration.textContent = '回答時間: ' + (typeof msg.durationMs === 'number' ? (msg.durationMs / 1000).toFixed(2) + ' 秒' : '記録なし');
+  modal.append(title, provider, duration);
+  if (msg.sources?.length) { modal.append(renderSources(msg.sources)); } else { const no = document.createElement('p'); no.className = 'muted'; no.textContent = 'この回答にソース情報はありません。'; modal.append(no); }
+  const close = document.createElement('button'); close.type = 'button'; close.className = 'primary'; close.textContent = '閉じる'; close.onclick = () => overlay.remove(); modal.append(close);
+  overlay.append(modal); overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); }); document.querySelector('#popupRoot').append(overlay);
 }
 function scrollBottom() { els.messages.scrollTop = els.messages.scrollHeight; }
 async function revertProvider(e) {
