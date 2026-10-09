@@ -73,8 +73,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .topbar-right { margin-left: auto; color: #a0a8b6; font-size: 10px; font-weight: 750; letter-spacing: .14em; }
 .chat-view { position: relative; display: flex; flex: 1; min-height: 0; flex-direction: column; }
 .messages { z-index: 1; display: flex; flex: 1; flex-direction: column; gap: 20px; overflow-y: auto; padding: 32px max(24px, calc((100% - 790px) / 2)) 22px; scroll-behavior: smooth; }
-.msg { display: flex; }
-.msg.user { justify-content: flex-end; }
+.msg { display: flex; flex-direction: column; align-items: flex-start; gap: 0; }
+.msg.user { align-items: flex-end; }
+.msg.user { justify-content: flex-end; align-items: flex-end; }
 .bubble { max-width: min(88%, 740px); padding: 13px 17px; border: 1px solid rgba(227,233,242,.9); border-radius: 20px; background: rgba(255,255,255,.88); box-shadow: 0 5px 22px rgba(44,65,92,.035); line-height: 1.75; overflow-wrap: anywhere; }
 .msg.user .bubble { border-color: #d8effd; border-bottom-right-radius: 7px; background: #e7f5ff; white-space: pre-wrap; }
 .msg.assistant .bubble { border-bottom-left-radius: 7px; }
