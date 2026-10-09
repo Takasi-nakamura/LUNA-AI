@@ -64,5 +64,6 @@ export const getAllByIndex = (store, index, value) =>
 export async function deleteChatCascade(chatId) {
   for (const m of await getAllByIndex('messages', 'chatId', chatId)) await del('messages', m.id);
   for (const s of await getAllByIndex('shortTerm', 'chatId', chatId)) await del('shortTerm', s.id);
+  for (const b of await getAllByIndex('branches', 'chatId', chatId)) await del('branches', b.id);
   await del('chats', chatId);
 }
