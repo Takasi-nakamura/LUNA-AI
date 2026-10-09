@@ -1,5 +1,5 @@
 // 最小限のキャッシュ：アプリ本体のみ。API通信・CDNは素通し（キャッシュしない）
-const CACHE = 'luna-v2';
+const CACHE = 'luna-v3';
 const SHELL = [
   './',
   './index.html',
@@ -28,7 +28,7 @@ self.addEventListener('install', (e) => {
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k.startsWith('luna-') && k !== CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
@@ -36,14 +36,24 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== self.location.origin) return;
-  e.respondWith(
-    caches.match(e.request).then(
-      (hit) =>
-        hit ||
-        fetch(e.request).then((res) => {
-          if (res.ok && url.pathname !== '/sw.js') caches.open(CACHE).then((c) => c.put(e.request, res.clone()));
-          return res;
-        })
-    )
-  );
+  // Network-first for the app shell prevents stale HTML/CSS/JS after deployments.
+  const isShell = /(?:^|\\/)(?:index\\.html|sw\\.js)$/.test(url.pathname) || /\\.(?:css|js)$/.test(url.pathname);
+  e.respondWith((async () => {
+    if (isShell) {
+      try {
+        const fresh = await fetch(e.request, { cache: 'no-cache' });
+        if (fresh.ok && url.pathname !== '/sw.js') caches.open(CACHE).then((c) => c.put(e.request, fresh.clone()));
+        return fresh;
+      } catch (err) {
+        const cached = await caches.match(e.request);
+        if (cached) return cached;
+        throw err;
+      }
+    }
+    const hit = await caches.match(e.request);
+    if (hit) return hit;
+    const res = await fetch(e.request);
+    if (res.ok) caches.open(CACHE).then((c) => c.put(e.request, res.clone()));
+    return res;
+  })());
 });
