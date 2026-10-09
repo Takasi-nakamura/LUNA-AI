@@ -67,3 +67,25 @@ Service Worker を使うため https 配信が必要です（GitHub Pages は ht
 - 短期記憶がチャット外に漏れないか
 - LSE：不正なディレクティブがMarkdownにフォールバックするか
 - PWAのインストールとオフライン起動
+
+
+## 新機能（Firebase / チャットツリー V2）
+
+### Firebase Authentication と安全なAIプロキシ
+
+1. Firebase ConsoleでプロジェクトとWebアプリを作成する。
+2. AuthenticationでGoogleまたはメール/パスワードのサインイン方法を有効にし、承認済みドメインに `takasi-nakamura.github.io` を追加する。
+3. リポジトリの `functions/.env.example` を参考に、ローカルで `functions/.env.<FirebaseのProject ID>` を作成する。実際の `GROQ_API_KEY` / `CEREBRAS_API_KEY` / `GEMINI_API_KEY` はこのローカルファイルにだけ記入し、GitHubへコミットしない。
+4. Firebase CLIを使い、`firebase login`、`firebase use <Project ID>`、`cd functions && npm install`、リポジトリルートに戻って `firebase deploy --only functions` を実行する。Cloud Functionsの利用にはFirebaseプロジェクトで課金設定が必要な場合がある。
+5. 設定 > モデル > Firebase アカウント連携にFirebase Web設定（apiKey / authDomain / projectId / appId）とデプロイされた `aiChat` のURLを入力して保存し、Googleまたはメールでログインする。
+6. AI Proxy URLが設定されると、モデル呼び出しはFirebase Functions経由になり、APIキーはサーバー環境変数から読み込まれる。未設定の場合は従来のブラウザ直接接続が使われるため、公開利用ではプロキシ設定を推奨。
+
+Firebase Web設定の `apiKey` はクライアント用設定値で、AIプロバイダの秘密鍵とは別物です。AIプロバイダの秘密鍵をフロントエンド設定やGitHubにコミットしないでください。
+
+### ファイル読解
+
+添付時にテキスト/Markdown/CSV/JSON/HTML、PDF、DOCX、XLS/XLSX、PPTX、画像OCRからテキストを抽出し、プロンプトに添えて送信します。外部CDNからPDF.js等を読み込むため、初回利用時はネット接続が必要です。抽出上限や対応形式の制約があり、スキャンPDFや複雑なレイアウトは完全に読み取れない場合があります。
+
+### チャットツリー V2
+
+編集・再生成では元の分岐を残し、新しい分岐を作成して会話を続けます。ヘッダーの分岐セレクターから以前の分岐に戻れます。回答は生成完了後に段階表示され、生成中はジャンプするドットを表示します（現状、モデルからのネットワークストリーミングではなくUI側の段階表示です）。
