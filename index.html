@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0b0f1a">
+  <meta name="theme-color" content="#f8fafc">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <title>LUNA</title>
+  <title>LUNA — AI Workspace</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="src/styles/app.css">
@@ -13,31 +13,85 @@
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand">LUNA</div>
-    <select id="chatSelect" aria-label="チャット選択"></select>
-    <button id="newChat" class="icon" title="新規チャット">＋</button>
-    <button id="delChat" class="icon" title="チャット削除">🗑</button>
-    <button id="openSettings" class="icon" title="設定">⚙</button>
-  </header>
+  <div class="app-shell">
+    <aside id="sidebar" class="sidebar" aria-label="メインナビゲーション">
+      <div class="sidebar-brand-row">
+        <div class="brand-mark" aria-hidden="true">L</div>
+        <div class="brand-copy"><strong>LUNA</strong><span>AI WORKSPACE</span></div>
+        <button id="closeSidebar" class="icon sidebar-close" type="button" aria-label="サイドバーを閉じる" title="閉じる">‹</button>
+      </div>
 
-  <main id="chatView" style="display:flex;flex-direction:column;flex:1;min-height:0">
-    <div id="messages" class="messages"></div>
-    <div id="suggest" class="suggest" hidden></div>
-    <form id="composer" class="composer">
-      <textarea id="input" rows="1" placeholder="メッセージ（/スキル名 で呼び出し）"></textarea>
-      <button id="send" type="submit" class="primary">送信</button>
-      <button id="stop" type="button" hidden>停止</button>
-    </form>
-  </main>
+      <nav class="sidebar-actions" aria-label="メニュー">
+        <button id="newChat" class="nav-action active"><span class="nav-icon">＋</span><span>新しいチャット</span></button>
+        <button id="openSkills" class="nav-action"><span class="nav-icon">✳</span><span>Skills</span></button>
+        <button id="openSettings" class="nav-action"><span class="nav-icon">⚙</span><span>設定</span></button>
+      </nav>
 
-  <section id="settingsView" class="settings" hidden>
-    <div class="settings-head">
-      <button id="closeSettings" class="icon" aria-label="戻る">←</button>
-      <strong>設定</strong>
+      <div class="history-heading"><span>最近のチャット</span><span class="history-count" id="chatCount">0</span></div>
+      <div id="chatList" class="chat-list" role="list"></div>
+
+      <div class="sidebar-footer">
+        <button id="openAccount" class="account-card" type="button">
+          <span class="account-avatar">L</span>
+          <span class="account-copy"><strong id="accountName">LUNA User</strong><small>個人ワークスペース</small></span>
+          <span class="account-chevron">›</span>
+        </button>
+      </div>
+    </aside>
+
+    <button id="sidebarScrim" class="sidebar-scrim" type="button" aria-label="サイドバーを閉じる" hidden></button>
+
+    <div class="workspace">
+      <header class="workspace-topbar">
+        <button id="openSidebar" class="icon menu-toggle" type="button" aria-label="サイドバーを開く" title="メニュー">☰</button>
+        <div class="workspace-title"><span class="status-dot"></span><span id="workspaceHeading">新しいチャット</span></div>
+        <div class="topbar-right"><span class="topbar-label">LUNA AI</span></div>
+      </header>
+
+      <main id="chatView" class="chat-view">
+        <div id="messages" class="messages"></div>
+        <div id="welcome" class="welcome">
+          <div class="welcome-orb"><span>L</span></div>
+          <p class="eyebrow">YOUR AI WORKSPACE</p>
+          <h1>何から始めますか？</h1>
+          <p class="welcome-subtitle">アイデアを整理し、調べ、つくる。ここから始めよう。</p>
+          <div class="prompt-chips">
+            <button type="button" class="prompt-chip" data-prompt="今日のタスクを整理して">今日のタスクを整理する <span>↗</span></button>
+            <button type="button" class="prompt-chip" data-prompt="このテーマについてWeb検索して要点をまとめて">Webで調べる <span>↗</span></button>
+            <button type="button" class="prompt-chip" data-prompt="新しいプロジェクトのアイデアを一緒に考えて">アイデアを広げる <span>↗</span></button>
+          </div>
+        </div>
+        <div id="suggest" class="suggest" hidden></div>
+        <form id="composer" class="composer">
+          <div id="attachmentTray" class="attachment-tray" hidden></div>
+          <div class="composer-row">
+            <div class="composer-plus-wrap">
+              <button id="plusButton" class="composer-plus" type="button" aria-label="追加" title="追加">＋</button>
+              <div id="addMenu" class="add-menu" hidden>
+                <button id="addSkill" type="button"><span>✳</span><span><strong>Skillを追加</strong><small>保存したスキルを選ぶ</small></span></button>
+                <button id="addFile" type="button"><span>↥</span><span><strong>ファイルを追加</strong><small>PDF、画像、テキストなど</small></span></button>
+              </div>
+            </div>
+            <textarea id="input" rows="1" placeholder="LUNAにメッセージ…" aria-label="メッセージ"></textarea>
+            <button id="send" type="submit" class="send-button" aria-label="送信" title="送信">↑</button>
+            <button id="stop" type="button" hidden>停止</button>
+          </div>
+          <div class="composer-hint"><span>Enterで送信 · Shift + Enterで改行</span><span>AIは間違えることがあります</span></div>
+        </form>
+        <input id="fileInput" type="file" multiple hidden accept=".pdf,.txt,.md,.csv,.json,.html,.htm,.png,.jpg,.jpeg,.gif,.webp,.svg,.doc,.docx,.xls,.xlsx,.ppt,.pptx">
+        <select id="chatSelect" aria-label="チャット選択" hidden></select>
+        <button id="delChat" hidden type="button">削除</button>
+      </main>
+
+      <section id="settingsView" class="settings" hidden>
+        <div class="settings-head">
+          <div class="settings-heading-copy"><span class="eyebrow">WORKSPACE</span><strong id="settingsTitle">設定</strong></div>
+          <button id="closeSettings" class="icon" aria-label="戻る">←</button>
+        </div>
+        <div id="settingsRoot"></div>
+      </section>
     </div>
-    <div id="settingsRoot"></div>
-  </section>
+  </div>
 
   <div id="toastRoot" class="toast-root"></div>
   <div id="popupRoot"></div>
