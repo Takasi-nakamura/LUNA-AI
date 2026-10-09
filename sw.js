@@ -1,5 +1,5 @@
 // 最小限のキャッシュ：アプリ本体のみ。API通信・CDNは素通し（キャッシュしない）
-const CACHE = 'luna-v1';
+const CACHE = 'luna-v2';
 const SHELL = [
   './',
   './index.html',
@@ -41,7 +41,7 @@ self.addEventListener('fetch', (e) => {
       (hit) =>
         hit ||
         fetch(e.request).then((res) => {
-          if (res.ok) caches.open(CACHE).then((c) => c.put(e.request, res.clone()));
+          if (res.ok && url.pathname !== '/sw.js') caches.open(CACHE).then((c) => c.put(e.request, res.clone()));
           return res;
         })
     )
