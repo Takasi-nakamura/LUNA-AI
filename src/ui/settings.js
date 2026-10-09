@@ -6,6 +6,7 @@ import { PROVIDERS } from '../core/router.js';
 import { listSkills, createSkill, updateSkill, deleteSkill } from '../core/skills.js';
 import { updateMemory, deleteMemory, updateShort, deleteShort, promote } from '../core/memory.js';
 import { toast } from './popups.js';
+import { configureFirebase, signInGoogle, signInEmail, signOutFirebase, currentUser } from '../core/firebase-auth.js';
 
 export function renderSettings(root, initialTab = 'models') {
   root.innerHTML = '';
@@ -61,6 +62,29 @@ async function modelsPanel() {
   const searchWorker = input(cfg.searchWorkerUrl || '');
   searchWorker.placeholder = 'https://your-worker.your-subdomain.workers.dev';
   const inj = checkbox(cfg.memoryInjection);
+  const fb = cfg.firebaseConfig || {};
+  const fbFields = {
+    apiKey: input(fb.apiKey || ''), authDomain: input(fb.authDomain || ''),
+    projectId: input(fb.projectId || ''), appId: input(fb.appId || ''),
+    messagingSenderId: input(fb.messagingSenderId || ''),
+  };
+  fbFields.apiKey.type = 'text';
+  const proxyUrl = input(cfg.apiProxyUrl || '');
+  proxyUrl.placeholder = 'Firebase Functions の aiChat URL';
+  const fbCard = el('div', 'card');
+  fbCard.append(el('h3', '', 'Firebase アカウント連携'));
+  fbCard.append(el('p', 'muted', 'Firebase ConsoleでWebアプリを登録し、AuthenticationでGoogleまたはメール/パスワードを有効にしてください。ここにはFirebaseのWeb設定のみを入力します。AIプロバイダの秘密鍵はサーバー側に置きます。'));
+  fbCard.append(labeled('Firebase API Key（公開設定値）', fbFields.apiKey), labeled('Auth Domain', fbFields.authDomain), labeled('Project ID', fbFields.projectId), labeled('App ID', fbFields.appId), labeled('Messaging Sender ID（任意）', fbFields.messagingSenderId), labeled('AI Proxy URL（Firebase Functions）', proxyUrl));
+  const authStatus = el('p', 'muted', 'ログイン状態を確認中…');
+  const authEmail = input(''); authEmail.type = 'email'; authEmail.placeholder = 'メールアドレス';
+  const authPassword = input('', 'password'); authPassword.placeholder = 'パスワード（6文字以上）';
+  const authRow = el('div', 'row');
+  authRow.append(button('Googleでログイン', async () => { try { const config = Object.fromEntries(Object.entries(fbFields).map(([k,v]) => [k,v.value.trim()])); await configureFirebase(config); await signInGoogle(); toast('ログインしました'); authStatus.textContent = 'ログイン済み'; } catch (e) { toast(e.message || 'ログインに失敗しました', 5000); } }, 'primary'));
+  authRow.append(button('メールでログイン', async () => { try { const config = Object.fromEntries(Object.entries(fbFields).map(([k,v]) => [k,v.value.trim()])); await configureFirebase(config); await signInEmail(authEmail.value.trim(), authPassword.value, false); toast('ログインしました'); authStatus.textContent = 'ログイン済み'; } catch (e) { toast(e.message || 'ログインに失敗しました', 5000); } }));
+  authRow.append(button('新規登録', async () => { try { const config = Object.fromEntries(Object.entries(fbFields).map(([k,v]) => [k,v.value.trim()])); await configureFirebase(config); await signInEmail(authEmail.value.trim(), authPassword.value, true); toast('アカウントを作成しました'); authStatus.textContent = 'ログイン済み'; } catch (e) { toast(e.message || '登録に失敗しました', 5000); } }));
+  authRow.append(button('ログアウト', async () => { try { await signOutFirebase(); authStatus.textContent = 'ログアウト中'; toast('ログアウトしました'); } catch (e) { toast(e.message || 'ログアウトに失敗しました'); } }));
+  fbCard.append(authStatus, labeled('メールアドレス', authEmail), labeled('パスワード', authPassword), authRow);
+  currentUser().then(u => { authStatus.textContent = u ? 'ログイン中: ' + (u.email || u.displayName || u.uid) : '未ログイン'; }).catch(() => { authStatus.textContent = '未ログイン'; });
   card.append(
     labeled('制限時に自動切替', auto),
     labeled('既定のプロバイダ', def),
@@ -77,11 +101,17 @@ async function modelsPanel() {
       c.defaultProvider = def.value;
       c.searchWorkerUrl = searchWorker.value.trim().replace(/\/$/, '');
       c.memoryInjection = inj.checked;
+      c.firebaseConfig = Object.fromEntries(Object.entries(fbFields).map(([k,v]) => [k,v.value.trim()]));
+      c.apiProxyUrl = proxyUrl.value.trim();
     });
+    try {
+      const config = Object.fromEntries(Object.entries(fbFields).map(([k,v]) => [k,v.value.trim()]));
+      if (config.apiKey && config.authDomain && config.projectId && config.appId) await configureFirebase(config);
+    } catch (e) { toast('設定は保存しましたがFirebase初期化に失敗: ' + e.message, 5000); return; }
     toast('保存しました');
   }, 'primary');
 
-  panel.append(card, save);
+  panel.append(card, fbCard, save);
   return panel;
 }
 
