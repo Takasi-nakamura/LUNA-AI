@@ -37,7 +37,7 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== self.location.origin) return;
   // Network-first for the app shell prevents stale HTML/CSS/JS after deployments.
-  const isShell = /(?:^|\\/)(?:index\\.html|sw\\.js)$/.test(url.pathname) || /\\.(?:css|js)$/.test(url.pathname);
+  const isShell = e.request.mode === 'navigate' || /(?:^|\/)(?:index\.html|sw\.js)$/.test(url.pathname) || /\.(?:css|js)$/.test(url.pathname);
   e.respondWith((async () => {
     if (isShell) {
       try {
