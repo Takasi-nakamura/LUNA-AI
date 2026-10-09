@@ -9,6 +9,8 @@ export const DEFAULT_CONFIG = {
   autoFallback: true,
   defaultProvider: 'groq',
   searchWorkerUrl: '',
+  firebaseConfig: { apiKey: '', authDomain: '', projectId: '', appId: '', messagingSenderId: '' },
+  apiProxyUrl: '',
   memoryInjection: true,
   turn: 0,
 };
@@ -19,7 +21,7 @@ export async function getConfig() {
   for (const id of Object.keys(DEFAULT_CONFIG.providers)) {
     providers[id] = { ...DEFAULT_CONFIG.providers[id], ...(saved.providers?.[id] || {}) };
   }
-  return { ...DEFAULT_CONFIG, ...saved, providers };
+  return { ...DEFAULT_CONFIG, ...saved, providers, firebaseConfig: { ...DEFAULT_CONFIG.firebaseConfig, ...(saved.firebaseConfig || {}) } };
 }
 
 // fn は cfg を直接書き換えてよい。返り値があればそれを保存する。
