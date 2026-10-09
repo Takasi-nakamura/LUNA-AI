@@ -351,7 +351,7 @@ async function regenerateAssistant(msg) {
   try {
     await runTurn({ chatId: state.chatId, input: clonedUser.content, existingUserMsgId: clonedUser.id, ui, signal: state.ctrl.signal });
     await refreshChats(state.chatId);
-  } catch (e) { toast(e.name === 'AbortError' ? '停止しました' : '再生成エラー: ' + e.message, 6000); }
+  } catch (e) { toast(e.name === 'AbortError' ? '停止しました' : '再生成エラー: ' + e.message, 6000); await renderHistory().catch(() => {}); }
   finally { state.busy = false; state.ctrl = null; els.sendBtn.disabled = false; els.stopBtn.hidden = true; }
 }
 async function showAnswerDetails(msg) {
