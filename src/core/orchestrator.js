@@ -26,9 +26,10 @@ const BASE_SYSTEM = [
   '- 最新情報や事実確認が必要な時は web_search を使い、参照したソースを回答に示す。',
 ].join('\n');
 
-const mkMsg = (chatId, role, content) => ({
+const mkMsg = (chatId, role, content, branchId) => ({
   id: crypto.randomUUID(),
   chatId,
+  branchId,
   role,
   content,
   createdAt: Date.now(),
@@ -64,7 +65,8 @@ function buildSystem({ applied, memories, shorts }) {
 /**
  * 1ターン実行。ui は { appendMessage, toast, onSwitch } を持つ。
  */
-export async function runTurn({ chatId, input, ui, signal }) {
+export async function runTurn({ chatId, input, ui, signal, existingUserMsgId }) {
+  const startedAt = performance.now();
   const chat = await get('chats', chatId);
   if (!chat) throw new Error('チャットが見つかりません');
 
@@ -75,15 +77,23 @@ export async function runTurn({ chatId, input, ui, signal }) {
   if (unknown.length) ui.toast(`スキルが見つかりません: ${unknown.map((u) => '/' + u).join(' ')}`);
   const userText = cleanedInput || input;
 
-  const userMsg = mkMsg(chatId, 'user', input);
-  await put('messages', userMsg);
-  ui.appendMessage(userMsg);
+  const userMsg = existingUserMsgId ? await get('messages', existingUserMsgId) : mkMsg(chatId, 'user', input, chat.activeBranchId);
+  if (!userMsg) throw new Error('再生成元のメッセージが見つかりません');
+  if (!existingUserMsgId) {
+    await put('messages', userMsg);
+    ui.appendMessage(userMsg);
+  }
+  ui.startThinking?.();
 
-  if (chat.title === '新しいチャット') chat.title = userText.slice(0, 24);
+  if (chat.title === '新しいチャット') {
+    const titleSource = userText.replace(/\s+/g, ' ').replace(/^[#\-*\s]+/, '').trim();
+    chat.title = Array.from(titleSource).slice(0, 26).join('') || '新しいチャット';
+  }
   chat.updatedAt = Date.now();
   await put('chats', chat);
 
   const history = (await getAllByIndex('messages', 'chatId', chatId))
+    .filter(m => !chat.activeBranchId || m.branchId === chat.activeBranchId)
     .sort((a, b) => a.createdAt - b.createdAt)
     .slice(-HISTORY_LIMIT);
   const lastAssistant = [...history].reverse().find((m) => m.role === 'assistant')?.content ?? '';
@@ -136,12 +146,13 @@ export async function runTurn({ chatId, input, ui, signal }) {
 
   const { blocks } = lseFilter(finalText);
   const msg = {
-    ...mkMsg(chatId, 'assistant', finalText),
+    ...mkMsg(chatId, 'assistant', finalText, chat.activeBranchId),
     blocks,
+    durationMs: Math.round(performance.now() - startedAt),
     sources: ctx.sources.length ? ctx.sources : undefined,
     provider,
   };
   await put('messages', msg);
-  ui.appendMessage(msg);
+  if (ui.appendStreaming) await ui.appendStreaming(msg); else ui.appendMessage(msg);
   return msg;
 }
