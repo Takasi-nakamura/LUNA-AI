@@ -153,7 +153,29 @@ export function fallbackChain(provider, autoFallback) {
   return FALLBACK_ORDER.slice(FALLBACK_ORDER.indexOf(provider));
 }
 
-async function callProvider(p, pc, model, messages, tools, signal) {
+async function callProxy(p, model, messages, tools, config, signal) {
+  const { currentIdToken } = await import('./firebase-auth.js');
+  const token = await currentIdToken();
+  if (!token) throw new ProviderError('AIプロキシを使うにはFirebaseにログインしてください');
+  const res = await fetch(config.apiProxyUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+    body: JSON.stringify({ provider: p, model, messages, tools }),
+    signal,
+  });
+  const text = await res.text();
+  if (!res.ok) throw new ProviderError('AI Proxy ' + res.status + ': ' + text.slice(0, 240), { status: res.status, rateLimited: res.status === 429 });
+  const data = JSON.parse(text);
+  if (p === 'gemini') {
+    const parts = data.candidates?.[0]?.content?.parts ?? [];
+    return { content: parts.filter(x => x.text).map(x => x.text).join(''), toolCalls: parts.filter(x => x.functionCall).map((x, i) => ({ id: 'gcall_' + Date.now() + '_' + i, type: 'function', function: { name: x.functionCall.name, arguments: JSON.stringify(x.functionCall.args || {}) } })), model };
+  }
+  const msg = data.choices?.[0]?.message || {};
+  return { content: msg.content || '', toolCalls: (msg.tool_calls || []).map(tc => ({ id: tc.id, type: 'function', function: { name: tc.function.name, arguments: tc.function.arguments } })), model };
+}
+
+async function callProvider(p, pc, model, messages, tools, signal, config) {
+  if (config.apiProxyUrl) return callProxy(p, model, messages, tools, config, signal);
   if (PROVIDERS[p].kind === 'gemini') return callGemini(pc.apiKey, model, messages, tools, signal);
   return callOpenAICompat(p, pc.apiKey, model, messages, tools, signal);
 }
@@ -175,7 +197,7 @@ export async function callModel({ messages, tools, selection, config, onSwitch, 
     }
     const model = p === selection.provider ? selection.model : PROVIDERS[p].models[0];
     try {
-      const r = await callProvider(p, pc, model, messages, tools, signal);
+      const r = await callProvider(p, pc, model, messages, tools, signal, config);
       return { ...r, provider: p, switched: i > 0 };
     } catch (e) {
       lastErr = e;
