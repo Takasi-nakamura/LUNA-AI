@@ -52,7 +52,7 @@ Service Worker を使うため https 配信が必要です（GitHub Pages は ht
 
 ## 注意点
 
-- **APIキーはブラウザ内（IndexedDB）に保存されます。** 個人利用前提です。リポジトリにキーを含めないでください。
+- AI Proxy URLが未設定の場合、プロバイダAPIキーはブラウザ内（IndexedDB）に保存されます。公開利用ではFirebase Functionsプロキシを設定し、秘密鍵をサーバー側に置いてください。リポジトリにキーを含めないでください。
 - Groq・Cerebras・Gemini を直接ブラウザから呼びます。CORS やレート制限は各サービスの仕様に依存するため、テストで動作確認してください。
 - Web検索は Tavily API を想定しています。ブラウザからの直接呼び出しが制限される場合は、検索処理を小さなプロキシ経由に差し替えてください（`src/core/tools.js` の `webSearch` のみ変更すれば済みます）。
 - モデルIDは `openai/gpt-oss-120b`（Groq）と `gpt-oss-120b`（Cerebras）としています。違う場合は `src/core/router.js` の `models` を変更してください。
