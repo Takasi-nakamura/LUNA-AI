@@ -198,3 +198,7 @@ button:disabled { opacity: .5; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+/* Recovery safeguards: prevent accidental unstyled/overlay states */
+#sidebarScrim[hidden], #suggest[hidden], #addMenu[hidden], #welcome[hidden], #settingsView[hidden], #chatView[hidden], #stop[hidden], #attachmentTray[hidden] { display: none !important; }
+#chatView, #settingsView { min-width: 0; }
+button { touch-action: manipulation; }
