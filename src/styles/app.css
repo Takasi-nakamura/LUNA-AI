@@ -98,7 +98,7 @@ pre.code { background: #f5f7fa; border: 1px solid var(--line); border-radius: 12
 .sources { margin-top: 10px; font-size: 12px; display: flex; flex-direction: column; gap: 4px; }
 .sources-title { color: var(--muted); }
 .sources a { color: #327da5; overflow-wrap: anywhere; }
-.welcome { z-index: 1; width: min(690px, calc(100% - 36px)); margin: auto auto 20px; padding: 24px 12px 0; text-align: center; }
+.welcome { position: absolute; z-index: 1; top: 48%; left: 50%; width: min(690px, calc(100% - 36px)); margin: 0; padding: 24px 12px 0; text-align: center; transform: translate(-50%, -50%); }
 .welcome-orb { display: grid; place-items: center; width: 64px; height: 64px; margin: 0 auto 19px; border: 1px solid rgba(255,255,255,.95); border-radius: 23px; background: linear-gradient(145deg, #e9f7ff, #cceaff); box-shadow: 0 12px 35px rgba(95,174,221,.16), inset 0 1px 0 white; color: #244d68; font-size: 31px; font-weight: 750; }
 .eyebrow { margin: 0 0 10px; color: #88a1b3; font-size: 9px; font-weight: 800; letter-spacing: .2em; }
 .welcome h1 { margin: 0; font-size: clamp(24px, 3vw, 34px); font-weight: 720; letter-spacing: -.045em; }
