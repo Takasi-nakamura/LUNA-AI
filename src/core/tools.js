@@ -65,24 +65,35 @@ export const TOOL_SCHEMAS = [
   },
 ];
 
-// Web検索バックエンド：Tavily（差し替え可能な関数として分離）
+// Web検索：Cloudflare Workerを経由し、Tavilyの秘密キーをブラウザに置かない
 async function webSearch(query, limit, ctx) {
   const cfg = await getConfig();
-  if (!cfg.searchApiKey) return { error: 'Web検索のAPIキーが未設定です（設定 > モデル）' };
+  const endpoint = (cfg.searchWorkerUrl || '').trim().replace(/\\/$/, '');
+  if (!endpoint) {
+    return { error: 'Web検索Worker URLが未設定です（設定 > モデル > Web検索Worker URL）。Cloudflare Workerを先に設定してください。' };
+  }
 
-  const n = Math.min(Math.max(limit || 5, 1), 8);
-  const res = await fetch('https://api.tavily.com/search', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ api_key: cfg.searchApiKey, query, max_results: n }),
-  });
-  if (!res.ok) return { error: `検索に失敗しました (${res.status})` };
+  const n = Math.min(Math.max(Number(limit) || 5, 1), 8);
+  let res;
+  try {
+    res = await fetch(`${endpoint}/search`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, max_results: n }),
+    });
+  } catch {
+    return { error: 'Web検索Workerに接続できません。URLとCloudflare Workerの公開状態を確認してください。' };
+  }
 
-  const data = await res.json();
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    return { error: data.error || `Web検索に失敗しました (${res.status})` };
+  }
+
   const retrievedAt = Date.now();
   const results = (data.results || []).slice(0, n).map((r) => ({
-    title: r.title,
-    url: r.url,
+    title: r.title || '',
+    url: r.url || '',
     snippet: (r.content || '').slice(0, 300),
     retrievedAt,
   }));
