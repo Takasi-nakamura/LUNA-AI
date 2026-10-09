@@ -103,8 +103,11 @@ function openSettings(tab = 'models') {
     title.textContent = 'アカウント設定';
     const desc = document.createElement('p');
     desc.className = 'muted';
-    desc.textContent = 'アカウント機能は準備中です。この画面は仮のページです。';
-    card.append(title, desc);
+    desc.textContent = 'Firebase AuthenticationでGoogleまたはメールアドレスによるログインができます。';
+    const go = document.createElement('button');
+    go.type = 'button'; go.className = 'primary'; go.textContent = 'Firebase設定・ログインを開く';
+    go.onclick = () => openSettings('models');
+    card.append(title, desc, go);
     els.settingsRoot.append(card);
   } else {
     renderSettings(els.settingsRoot, tab === 'skills' ? 'skills' : 'models');
@@ -343,8 +346,12 @@ async function regenerateAssistant(msg) {
   const { cloned } = await forkBranch(chat, prefix, '再生成');
   await refreshBranchSelector(chat); await renderHistory();
   const clonedUser = cloned[cloned.length - 1];
-  await runTurn({ chatId: state.chatId, input: clonedUser.content, existingUserMsgId: clonedUser.id, ui, signal: (state.ctrl = new AbortController()).signal });
-  await refreshChats(state.chatId);
+  state.busy = true; state.ctrl = new AbortController(); els.sendBtn.disabled = true; els.stopBtn.hidden = false;
+  try {
+    await runTurn({ chatId: state.chatId, input: clonedUser.content, existingUserMsgId: clonedUser.id, ui, signal: state.ctrl.signal });
+    await refreshChats(state.chatId);
+  } catch (e) { toast(e.name === 'AbortError' ? '停止しました' : '再生成エラー: ' + e.message, 6000); }
+  finally { state.busy = false; state.ctrl = null; els.sendBtn.disabled = false; els.stopBtn.hidden = true; }
 }
 async function showAnswerDetails(msg) {
   const overlay = document.createElement('div'); overlay.className = 'overlay';
