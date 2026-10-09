@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0f1a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>LUNA</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="src/styles/app.css">
+  <script src="https://cdn.jsdelivr.net/npm/markdown-it@14.1.0/dist/markdown-it.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">LUNA</div>
+    <select id="chatSelect" aria-label="チャット選択"></select>
+    <button id="newChat" class="icon" title="新規チャット">＋</button>
+    <button id="delChat" class="icon" title="チャット削除">🗑</button>
+    <button id="openSettings" class="icon" title="設定">⚙</button>
+  </header>
+
+  <main id="chatView" style="display:flex;flex-direction:column;flex:1;min-height:0">
+    <div id="messages" class="messages"></div>
+    <div id="suggest" class="suggest" hidden></div>
+    <form id="composer" class="composer">
+      <textarea id="input" rows="1" placeholder="メッセージ（/スキル名 で呼び出し）"></textarea>
+      <button id="send" type="submit" class="primary">送信</button>
+      <button id="stop" type="button" hidden>停止</button>
+    </form>
+  </main>
+
+  <section id="settingsView" class="settings" hidden>
+    <div class="settings-head">
+      <button id="closeSettings" class="icon" aria-label="戻る">←</button>
+      <strong>設定</strong>
+    </div>
+    <div id="settingsRoot"></div>
+  </section>
+
+  <div id="toastRoot" class="toast-root"></div>
+  <div id="popupRoot"></div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
