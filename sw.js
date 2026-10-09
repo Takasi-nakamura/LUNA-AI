@@ -1,5 +1,5 @@
 // 最小限のキャッシュ：アプリ本体のみ。API通信・CDNは素通し（キャッシュしない）
-const CACHE = 'luna-v5';
+const CACHE = 'luna-v6';
 const SHELL = [
   './',
   './index.html',
@@ -11,6 +11,7 @@ const SHELL = [
   './src/store/config.js',
   './src/core/lse.js',
   './src/core/router.js',
+  './src/core/firebase-auth.js',
   './src/core/memory.js',
   './src/core/skills.js',
   './src/core/tools.js',
