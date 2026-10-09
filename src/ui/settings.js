@@ -58,13 +58,13 @@ async function modelsPanel() {
     def.append(o);
   }
   def.value = cfg.defaultProvider;
-  const search = input(cfg.searchApiKey, 'password');
-  search.placeholder = 'Tavily APIキー（Web検索）';
+  const searchWorker = input(cfg.searchWorkerUrl || '');
+  searchWorker.placeholder = 'https://your-worker.your-subdomain.workers.dev';
   const inj = checkbox(cfg.memoryInjection);
   card.append(
     labeled('制限時に自動切替', auto),
     labeled('既定のプロバイダ', def),
-    labeled('Web検索キー', search),
+    labeled('Web検索Worker URL', searchWorker),
     labeled('記憶の自動提示', inj)
   );
 
@@ -75,7 +75,7 @@ async function modelsPanel() {
       }
       c.autoFallback = auto.checked;
       c.defaultProvider = def.value;
-      c.searchApiKey = search.value.trim();
+      c.searchWorkerUrl = searchWorker.value.trim().replace(/\\/$/, '');
       c.memoryInjection = inj.checked;
     });
     toast('保存しました');
