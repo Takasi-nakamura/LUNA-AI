@@ -68,7 +68,7 @@ export const TOOL_SCHEMAS = [
 // Web検索：Cloudflare Workerを経由し、Tavilyの秘密キーをブラウザに置かない
 async function webSearch(query, limit, ctx) {
   const cfg = await getConfig();
-  const endpoint = (cfg.searchWorkerUrl || '').trim().replace(/\\/$/, '');
+  const endpoint = (cfg.searchWorkerUrl || '').trim().replace(/\/$/, '');
   if (!endpoint) {
     return { error: 'Web検索Worker URLが未設定です（設定 > モデル > Web検索Worker URL）。Cloudflare Workerを先に設定してください。' };
   }
