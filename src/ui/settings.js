@@ -75,7 +75,7 @@ async function modelsPanel() {
       }
       c.autoFallback = auto.checked;
       c.defaultProvider = def.value;
-      c.searchWorkerUrl = searchWorker.value.trim().replace(/\\/$/, '');
+      c.searchWorkerUrl = searchWorker.value.trim().replace(/\/$/, '');
       c.memoryInjection = inj.checked;
     });
     toast('保存しました');
