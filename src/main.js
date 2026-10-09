@@ -7,6 +7,7 @@ import { listSkills } from './core/skills.js';
 import { renderBlocks, renderSources } from './ui/render.js';
 import { toast, showSwitch, showAsk } from './ui/popups.js';
 import { renderSettings } from './ui/settings.js';
+import { configureFirebase, observeAuth } from './core/firebase-auth.js';
 
 const $ = (s) => document.querySelector(s);
 const els = {
@@ -380,7 +381,8 @@ async function extractFileText(file) {
   }
   if (ext === 'pdf' || file.type === 'application/pdf') {
     const pdfjs = await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs');
-    const pdf = await pdfjs.getDocument({ data: await file.arrayBuffer(), disableWorker: true }).promise;
+    pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
+    const pdf = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
     let out = '';
     for (let i = 1; i <= Math.min(pdf.numPages, 80); i++) {
       const page = await pdf.getPage(i); const data = await page.getTextContent();
@@ -438,6 +440,7 @@ async function sendText(text) {
   } catch (e) {
     if (e.name === 'AbortError') toast('停止しました');
     else { console.error(e); toast('エラー: ' + e.message, 6000); }
+    await renderHistory().catch(() => {});
   } finally {
     state.busy = false; state.ctrl = null; els.sendBtn.disabled = false; els.stopBtn.hidden = true;
   }
@@ -556,6 +559,16 @@ document.querySelectorAll('[data-prompt]').forEach(b => b.addEventListener('clic
 window.addEventListener('resize', () => setSidebar(state.sidebarOpen));
 async function boot() {
   await openDB();
+  const cfg = await getConfig();
+  if (cfg.firebaseConfig?.apiKey && cfg.firebaseConfig?.authDomain && cfg.firebaseConfig?.projectId && cfg.firebaseConfig?.appId) {
+    try {
+      await configureFirebase(cfg.firebaseConfig);
+      await observeAuth(user => {
+        const name = document.querySelector('#accountName');
+        if (name) name.textContent = user ? (user.displayName || user.email || 'LUNA User') : 'LUNA User';
+      });
+    } catch (e) { console.warn('Firebase initialization:', e.message); }
+  }
   await refreshChats();
   setSidebar(!isMobile());
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(e => console.error('SW register failed', e));
