@@ -392,12 +392,14 @@ async function extractFileText(file) {
     return out || '(PDFからテキストを抽出できませんでした。スキャン画像PDFの可能性があります)';
   }
   if (['docx'].includes(ext)) {
-    const mammoth = await import('https://cdn.jsdelivr.net/npm/mammoth@1.8.0/+esm');
+    const mammothModule = await import('https://cdn.jsdelivr.net/npm/mammoth@1.8.0/+esm');
+    const mammoth = mammothModule.default || mammothModule;
     const result = await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
     return result.value;
   }
   if (['xlsx','xls'].includes(ext)) {
-    const XLSX = await import('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm');
+    const XLSXModule = await import('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm');
+    const XLSX = XLSXModule.default || XLSXModule;
     const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array' });
     return workbook.SheetNames.map(name => '[Sheet: ' + name + ']\n' + XLSX.utils.sheet_to_csv(workbook.Sheets[name])).join('\n\n');
   }
@@ -415,8 +417,9 @@ async function extractFileText(file) {
   }
   if (file.type.startsWith('image/')) {
     const Tesseract = await import('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.esm.min.js');
-    const result = await Tesseract.recognize(file, 'jpn+eng');
-    return '[画像OCR結果]\n' + result.data.text;
+    const worker = await Tesseract.createWorker('jpn+eng');
+    try { const result = await worker.recognize(file); return '[画像OCR結果]\n' + result.data.text; }
+    finally { await worker.terminate(); }
   }
   throw new Error(file.name + ' はまだ読み取りに対応していません');
 }
