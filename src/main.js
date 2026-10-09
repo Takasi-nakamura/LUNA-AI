@@ -45,6 +45,20 @@ const els = {
 };
 const state = { chatId: null, busy: false, ctrl: null, attachments: [], sidebarOpen: true, activeSettings: 'models' };
 const isMobile = () => window.matchMedia('(max-width: 760px)').matches;
+window.addEventListener('error', (event) => {
+  console.error('[LUNA UI error]', event.error || event.message);
+  const root = document.querySelector('#toastRoot');
+  if (root) {
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.textContent = '画面エラーが発生しました。ページを再読み込みしてください。';
+    root.append(t);
+    window.setTimeout(() => t.remove(), 6000);
+  }
+});
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('[LUNA async error]', event.reason);
+});
 const ui = {
   appendMessage: (m) => appendMessage(m, { live: true }),
   toast,
