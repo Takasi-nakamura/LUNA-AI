@@ -191,7 +191,7 @@ export async function callModel({ messages, tools, selection, config, onSwitch, 
     const p = chain[i];
     const next = chain[i + 1];
     const pc = config.providers[p];
-    if (!pc?.enabled || !pc.apiKey) {
+    if (!pc?.enabled || (!config.apiProxyUrl && !pc.apiKey)) {
       lastErr = new ProviderError(`${PROVIDERS[p].label} のAPIキーが未設定です`);
       continue;
     }
