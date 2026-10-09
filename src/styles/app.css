@@ -15,7 +15,7 @@
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-html, body { height: 100%; margin: 0; background: var(--bg); color: var(--text); font-family: Inter, -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic UI", Meiryo, sans-serif; font-size: 14px; }
+html, body { height: 100%; margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Yu Gothic UI", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif; font-size: 14px; }
 body { overflow: hidden; }
 button, select, input, textarea { font: inherit; color: inherit; }
 button { -webkit-tap-highlight-color: transparent; }
@@ -64,7 +64,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 @keyframes drift-one { from { transform: translate3d(0,-10px,0) scale(.95); } to { transform: translate3d(-75px,55px,0) scale(1.08); } }
 @keyframes drift-two { from { transform: translate3d(-20px,0,0) scale(1); } to { transform: translate3d(65px,-50px,0) scale(1.12); } }
 .workspace-topbar { display: flex; align-items: center; gap: 12px; min-height: 65px; padding: 0 25px; border-bottom: 1px solid rgba(226,232,240,.75); background: rgba(255,255,255,.64); backdrop-filter: blur(18px); }
-.menu-toggle { width: 36px; height: 36px; font-size: 17px; }
+.menu-toggle { display: none; width: 36px; height: 36px; font-size: 17px; }
+.app-shell.sidebar-closed .menu-toggle { display: inline-grid; }
+.skill-icon { color: #6796b5; font-size: 22px; line-height: 1; }
 .workspace-title { display: flex; align-items: center; gap: 9px; min-width: 0; font-size: 13px; font-weight: 650; }
 .workspace-title span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .status-dot { width: 7px; height: 7px; flex: 0 0 7px; border-radius: 50%; background: #72c6e9; box-shadow: 0 0 0 4px rgba(114,198,233,.13); }
